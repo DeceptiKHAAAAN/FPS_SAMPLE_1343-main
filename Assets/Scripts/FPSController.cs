@@ -2,14 +2,17 @@ using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
+using UnityEngine.InputSystem;
 
 public class FPSController : MonoBehaviour
 {
     // references
     CharacterController controller;
+    [SerializeField] Rigidbody rb;
     [SerializeField] GameObject cam;
     [SerializeField] Transform gunHold;
     [SerializeField] Gun initialGun;
+    IA_Player myControls;
 
     // stats
     [SerializeField] float movementSpeed = 2.0f;
@@ -24,6 +27,7 @@ public class FPSController : MonoBehaviour
 
     // private variables
     float timeSinceDamaged = 0;
+    Vector2 moveInput;
     Vector3 velocity;
     bool grounded;
     float xRotation;
@@ -38,6 +42,24 @@ public class FPSController : MonoBehaviour
     private void Awake()
     {
         
+    }
+
+    private void OnEnable()
+    {
+        if (myControls == null)
+            myControls = new IA_Player();
+
+        myControls.Enable();
+
+        myControls.Player.Jump.performed += OnJump;
+        
+    }
+
+    private void OnDisable()
+    {
+        myControls.Player.Jump.performed -= OnJump;
+
+        myControls.Disable();
     }
 
     // Start is called before the first frame update
@@ -57,22 +79,43 @@ public class FPSController : MonoBehaviour
         if (timeSinceDamaged > 0.5)
             OnNotDamaged.Invoke();
 
-        Movement();
+        // Movement();
         Look();
 
         FireGun();
 
         // always go back to "no velocity"
         // "velocity" is for movement speed that we gain in addition to our movement (falling, knockback, etc.)
-        Vector3 noVelocity = new Vector3(0, velocity.y, 0);
-        velocity = Vector3.Lerp(velocity, noVelocity, 5 * Time.deltaTime);
+        /*Vector3 noVelocity = new Vector3(0, velocity.y, 0);
+        velocity = Vector3.Lerp(velocity, noVelocity, 5 * Time.deltaTime);*/
+
+        Vector3 camForward = cam.transform.forward;
+        Vector3 camRight = cam.transform.right;
+        camForward.y = 0;
+        camRight.y = 0;
+        camForward = camForward.normalized;
+        camRight = camRight.normalized;
+
+        Vector3 moveDir = (camForward * moveInput.y) + (camRight * moveInput.x);
+
+        rb.AddForce(moveDir * movementSpeed, ForceMode.Force);
+        moveInput = myControls.Player.Move.ReadValue<Vector2>();
     }
 
-    void Movement()
+    public void OnJump(InputAction.CallbackContext ctx)
     {
-        grounded = controller.isGrounded;
+        if (ctx.performed)
+        {
+            rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        }
+    }
 
-        if(grounded && velocity.y < 0)
+    public void OnMove(InputAction.CallbackContext ctx)
+    {
+        // Old movement;
+        /*grounded = controller.isGrounded;
+
+        if (grounded && velocity.y < 0)
         {
             velocity.y = -0.5f;
         }
@@ -83,12 +126,14 @@ public class FPSController : MonoBehaviour
 
         if (Input.GetButtonDown("Jump") && grounded)
         {
-            velocity.y += Mathf.Sqrt (jumpForce * -1 * gravity);
+            velocity.y += Mathf.Sqrt(jumpForce * -1 * gravity);
         }
 
         velocity.y += gravity * Time.deltaTime;
 
-        controller.Move(velocity * Time.deltaTime);
+        controller.Move(velocity * Time.deltaTime);*/
+
+        moveInput = ctx.ReadValue<Vector2>();
     }
 
     void Look()

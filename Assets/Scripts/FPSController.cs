@@ -34,6 +34,7 @@ public class FPSController : MonoBehaviour
     List<Gun> equippedGuns = new List<Gun>();
     int gunIndex = 0;
     Gun currentGun = null;
+    bool refillOn = false;
 
     // properties
     public GameObject Cam { get { return cam; } }
@@ -44,6 +45,11 @@ public class FPSController : MonoBehaviour
         
     }
 
+    public void RefillOn(bool value)
+    {
+        refillOn = value;
+    }
+
     private void OnEnable()
     {
         if (myControls == null)
@@ -52,12 +58,15 @@ public class FPSController : MonoBehaviour
         myControls.Enable();
 
         myControls.Player.Jump.performed += OnJump;
-        
+        myControls.Player.Shoot.performed += OnShoot;
+        myControls.Player.Interact.performed += OnInteract;
     }
 
     private void OnDisable()
     {
         myControls.Player.Jump.performed -= OnJump;
+        myControls.Player.Shoot.performed -= OnShoot;
+        myControls.Player.Interact.performed -= OnInteract;
 
         myControls.Disable();
     }
@@ -82,7 +91,7 @@ public class FPSController : MonoBehaviour
         // Movement();
         Look();
 
-        FireGun();
+        //FireGun();
 
         // always go back to "no velocity"
         // "velocity" is for movement speed that we gain in addition to our movement (falling, knockback, etc.)
@@ -102,11 +111,27 @@ public class FPSController : MonoBehaviour
         moveInput = myControls.Player.Move.ReadValue<Vector2>();
     }
 
+    public void OnInteract(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed && refillOn)
+        {
+            IncreaseAmmo(999);
+        }
+    }
+
     public void OnJump(InputAction.CallbackContext ctx)
     {
         if (ctx.performed)
         {
             rb.AddForce(Vector3.up * jumpForce, ForceMode.Impulse);
+        }
+    }
+
+    public void OnShoot(InputAction.CallbackContext ctx)
+    {
+        if (ctx.performed)
+        {
+            currentGun?.AttemptFire();
         }
     }
 
@@ -150,13 +175,13 @@ public class FPSController : MonoBehaviour
         transform.Rotate(Vector3.up * lookX);
     }
 
-    void FireGun()
+    /*void FireGun()
     {
         if(GetPressFire())
         {
             currentGun?.AttemptFire();
         }
-    }
+    }*/
 
     void EquipGun(Gun g)
     {
